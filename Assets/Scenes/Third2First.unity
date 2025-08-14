@@ -123,6 +123,11 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 23800000, guid: 1a8ec1375c8fabb4e89fde0f6fa41276, type: 2}
+--- !u!95 &149670626 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 367125800313071332, guid: b63f75feba7138846a963967841d2e54, type: 3}
+  m_PrefabInstance: {fileID: 934710264672394326}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &322697751
 GameObject:
   m_ObjectHideFlags: 0
@@ -221,6 +226,11 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &461112367 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6085171588572340322, guid: b63f75feba7138846a963967841d2e54, type: 3}
+  m_PrefabInstance: {fileID: 934710264672394326}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &649663487
 GameObject:
   m_ObjectHideFlags: 0
@@ -318,6 +328,33 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1688961345 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4810643737284037207, guid: 7b73737d7f8667f499ed79c1f1ee61f5, type: 3}
+  m_PrefabInstance: {fileID: 4810643737232689478}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1688961350
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1688961345}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad6c185abc6fe0c4d870c314e14b6846, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ai: {fileID: 0}
+  agent: {fileID: 0}
+  animator: {fileID: 1841091461}
+  speedParam: Speed
+  attackTrig: Attack
+  deathTrig: Death
+  hasTargetBool: HasTarget
+  normalizeSpeed: 0
+  speedDampTime: 0.08
+  useAgentRotation: 1
 --- !u!1 &1752885201
 GameObject:
   m_ObjectHideFlags: 0
@@ -412,6 +449,11 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!95 &1841091461 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 1416456111522298049, guid: 7b73737d7f8667f499ed79c1f1ee61f5, type: 3}
+  m_PrefabInstance: {fileID: 4810643737232689478}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &934710264672394326
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -464,6 +506,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6085171588572340321, guid: b63f75feba7138846a963967841d2e54, type: 3}
+      propertyPath: runSpeed
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 6085171588572340322, guid: b63f75feba7138846a963967841d2e54, type: 3}
       propertyPath: m_Name
       value: Player 1to3
@@ -479,6 +525,10 @@ PrefabInstance:
     serializedVersion: 2
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1416456111522298049, guid: 7b73737d7f8667f499ed79c1f1ee61f5, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: c23731167a2950a4b9637b2f0b130398, type: 2}
     - target: {fileID: 4810643737284037203, guid: 7b73737d7f8667f499ed79c1f1ee61f5, type: 3}
       propertyPath: m_RootOrder
       value: 3
@@ -539,3 +589,22 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6085171588572340320, guid: b63f75feba7138846a963967841d2e54, type: 3}
   m_PrefabInstance: {fileID: 934710264672394326}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &6379944091212512313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 461112367}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1fa545a72d42474e8be4ff817fcebbe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  movement: {fileID: 0}
+  animator: {fileID: 149670626}
+  speedParam: Speed
+  jumpTrigger: Jump
+  deathTrigger: Death
+  speedDampTime: 0.08
+  usePlanarSpeedOnly: 1

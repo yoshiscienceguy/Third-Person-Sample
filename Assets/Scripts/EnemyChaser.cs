@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using System;
 
 public class EnemyChaser : MonoBehaviour
 {
@@ -20,14 +21,26 @@ public class EnemyChaser : MonoBehaviour
     public float repathInterval = 0.1f; // How often we update destination while chasing
     public float faceTargetSpeed = 10f; // How quickly to face player at stop
 
+
+    public event Action OnAttack;
+    public event Action OnDeath;
+    public event Action OnStartMove;
+    public event Action OnStopMove;
+
+
     [Header("Debug")]
     public bool drawGizmos = true;
 
     float lastSeenTime = -999f;
     float repathTimer;
+    bool wasMoving;
 
     enum State { Idle, Chasing, Attacking }
     State state = State.Idle;
+
+    public Vector3 Velocity => agent ? agent.velocity : Vector3.zero;
+    public bool IsMoving => agent && agent.velocity.sqrMagnitude > 0.01f;
+    public bool HasTarget => player != null;
 
     void Reset()
     {
@@ -54,6 +67,7 @@ public class EnemyChaser : MonoBehaviour
         switch (state)
         {
             case State.Idle:
+                agent.ResetPath();
                 if (canSee && dist <= detectRadius)
                 {
                     state = State.Chasing;
@@ -62,7 +76,6 @@ public class EnemyChaser : MonoBehaviour
                 break;
 
             case State.Chasing:
-                // Repath periodically to follow moving target
                 repathTimer -= Time.deltaTime;
                 if (repathTimer <= 0f)
                 {
@@ -70,69 +83,71 @@ public class EnemyChaser : MonoBehaviour
                     repathTimer = repathInterval;
                 }
 
-                // Switch to attack if close enough
                 if (dist <= attackRange + agent.stoppingDistance)
                 {
                     state = State.Attacking;
                     agent.ResetPath();
+                    OnAttack?.Invoke(); // fire once on entry; drive your attack anim
                 }
                 else if (Time.time - lastSeenTime > loseSightTime)
                 {
-                    // Lost the player long enough — stop
                     state = State.Idle;
                     agent.ResetPath();
                 }
                 break;
 
             case State.Attacking:
-                // Face the player
                 FaceTarget(player.position);
-
-                // If they move away, resume chase
                 if (dist > attackRange + agent.stoppingDistance)
                 {
                     state = State.Chasing;
                 }
-                // If we lose them for too long, go idle
                 else if (Time.time - lastSeenTime > loseSightTime)
                 {
                     state = State.Idle;
                 }
-
-                // TODO: trigger your attack animation / damage here (e.g., via Animator)
                 break;
+        }
+
+        // Movement start/stop notifications (for footstep sfx etc.)
+        bool moving = IsMoving;
+        if (moving != wasMoving)
+        {
+            if (moving) OnStartMove?.Invoke();
+            else OnStopMove?.Invoke();
+            wasMoving = moving;
         }
     }
 
     bool CanSeePlayer()
     {
         Vector3 toPlayer = player.position - transform.position;
-        float sqrDist = toPlayer.sqrMagnitude;
-        if (sqrDist > detectRadius * detectRadius) return false;
+        if (toPlayer.sqrMagnitude > detectRadius * detectRadius) return false;
 
-        // FOV check
-        Vector3 toPlayerDir = toPlayer.normalized;
-        Vector3 fwd = transform.forward;
-        float angle = Vector3.Angle(fwd, toPlayerDir);
+        float angle = Vector3.Angle(transform.forward, toPlayer);
         if (angle > fovDegrees * 0.5f) return false;
 
-        // Line-of-sight raycast (ignore self height differences)
         Vector3 eye = transform.position + Vector3.up * 1.6f;
-        Vector3 target = player.position + Vector3.up * 1.2f;
-        if (Physics.Raycast(eye, (target - eye).normalized, out RaycastHit hit, detectRadius, obstacleMask, QueryTriggerInteraction.Ignore))
-        {
-            return hit.transform.IsChildOf(player) || hit.transform == player;
-        }
-        return true; // nothing hit = clear
+        Vector3 tgt = player.position + Vector3.up * 1.2f;
+        if (Physics.Raycast(eye, (tgt - eye).normalized, out var hit, detectRadius, ~0, QueryTriggerInteraction.Ignore))
+            return hit.transform == player || hit.transform.IsChildOf(player);
+        return true;
     }
 
-    void FaceTarget(Vector3 worldPos)
+    void FaceTarget(Vector3 pos)
     {
-        Vector3 look = worldPos - transform.position;
-        look.y = 0f;
-        if (look.sqrMagnitude < 0.0001f) return;
-        Quaternion targetRot = Quaternion.LookRotation(look, Vector3.up);
-        transform.rotation = Quaternion.Lerp(transform.rotation, targetRot, Time.deltaTime * faceTargetSpeed);
+        Vector3 d = pos - transform.position; d.y = 0;
+        if (d.sqrMagnitude < 1e-4f) return;
+        Quaternion r = Quaternion.LookRotation(d, Vector3.up);
+        transform.rotation = Quaternion.Slerp(transform.rotation, r, Time.deltaTime * 10f);
+    }
+
+    // Call from your health/damage system:
+    public void Die()
+    {
+        OnDeath?.Invoke();
+        if (agent) agent.isStopped = true;
+        enabled = false;
     }
 
     void OnDrawGizmosSelected()

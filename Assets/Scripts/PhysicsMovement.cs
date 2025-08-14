@@ -1,46 +1,113 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class PhysicsMovement : MonoBehaviour
 {
-    public float moveSpeed = 5f;
+    
+    [Header("References")]
+    public Transform cameraTransform;    // Drag Main Camera here
+
+    [Header("Movement")]
+    public float walkSpeed = 5f;
+    public float runSpeed = 8.5f;
+    public float acceleration = 18f;     // Ground accel
+    public float airAcceleration = 6f;   // Air control
+    public bool rotateToMove = true;     // Turn to face motion
+
+    [Header("Jumping & Gravity")]
+    public float jumpHeight = 1.6f;      // ~1.6m hop
     public float gravity = -9.81f;
-    public Transform cameraTransform;   // <- drag Main Camera here in Inspector
-    public bool rotateToMove = true;    // turn to face movement direction
+    public float fallMultiplier = 2.2f;  // Faster fall
+    public float coyoteTime = 0.15f;     // Grace after leaving ground
+    public float jumpBuffer = 0.12f;     // Grace before landing
 
     CharacterController cc;
-    float vy;
+    Vector3 velocity;   // x/z horizontal, y vertical
+    float groundedTimer;
+    float jumpBufferTimer;
+
+    public event Action OnJump;
+    public event Action OnDeath; // call this from your health logic
+
+    public Vector3 Velocity => velocity; // expose current velocity
+    public bool IsGrounded => cc.isGrounded;
+
 
     void Awake() { cc = GetComponent<CharacterController>(); }
 
     void Update()
     {
+        // --- INPUT ---
         Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
         input = Vector2.ClampMagnitude(input, 1f);
+        bool wantsRun = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        if (Input.GetKeyDown(KeyCode.Space)) jumpBufferTimer = jumpBuffer;
 
-        // Use camera yaw for movement axes
-        Vector3 camFwd = cameraTransform.forward;
-        camFwd.y = 0f;
-        camFwd = camFwd.normalized;
+        // --- CAMERA-RELATIVE DIRECTIONS ---
+        Vector3 camFwd = cameraTransform.forward; camFwd.y = 0f; camFwd.Normalize();
+        Vector3 camRight = cameraTransform.right; camRight.y = 0f; camRight.Normalize();
+        Vector3 wishDir = (camFwd * input.y + camRight * input.x);
+        if (wishDir.sqrMagnitude > 1e-4f) wishDir.Normalize();
 
-        Vector3 camRight = cameraTransform.right;
-        camRight.y = 0f;
-        camRight = camRight.normalized;
+        // --- GROUNDING (CharacterController) ---
+        bool grounded = cc.isGrounded;
+        if (grounded) groundedTimer = coyoteTime; else groundedTimer -= Time.deltaTime;
+        jumpBufferTimer -= Time.deltaTime;
 
-        Vector3 moveFlat = (camFwd * input.y + camRight * input.x) * moveSpeed;
+        // --- TARGET SPEED ---
+        float targetSpeed = (wantsRun ? runSpeed : walkSpeed) * input.magnitude;
 
-        // Optional: rotate player to face where they're moving (ignores tiny inputs)
-        if (rotateToMove && moveFlat.sqrMagnitude > 0.0001f)
+        // --- ACCELERATION (separate horizontal & vertical) ---
+        Vector3 horizVel = new Vector3(velocity.x, 0f, velocity.z);
+        Vector3 desiredHoriz = wishDir * targetSpeed;
+        float accel = grounded ? acceleration : airAcceleration;
+        horizVel = Vector3.MoveTowards(horizVel, desiredHoriz, accel * Time.deltaTime);
+
+        // --- JUMP ---
+        if (jumpBufferTimer > 0f && groundedTimer > 0f)
         {
-            Quaternion look = Quaternion.LookRotation(moveFlat, Vector3.up);
+            jumpBufferTimer = 0f;
+            groundedTimer = 0f;
+            velocity.y = Mathf.Sqrt(2f * jumpHeight * -gravity); // v = sqrt(2gh)
+        }
+
+        // --- GRAVITY & VARIABLE JUMP HEIGHT ---
+        bool rising = velocity.y > 0.01f;
+        float g = gravity * (rising && !Input.GetKey(KeyCode.Space) ? fallMultiplier : 1f);
+        velocity.y += g * Time.deltaTime;
+
+        // Re-apply combined velocity
+        velocity.x = horizVel.x;
+        velocity.z = horizVel.z;
+
+        // --- MOVE ---
+        cc.Move(velocity * Time.deltaTime);
+
+        // Tiny stick to ground
+        if (grounded && velocity.y < 0f) velocity.y = -0.1f;
+
+        // --- FACE MOVE DIRECTION (optional) ---
+        if (rotateToMove && wishDir.sqrMagnitude > 1e-4f)
+        {
+            Quaternion look = Quaternion.LookRotation(wishDir, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, look, Time.deltaTime * 12f);
         }
 
-        // Gravity + CharacterController move
-        if (cc.isGrounded) vy = -0.1f; else vy += gravity * Time.deltaTime;
-        Vector3 velocity = moveFlat; velocity.y = vy;
+        if (jumpBufferTimer > 0f && groundedTimer > 0f)
+        {
+            jumpBufferTimer = 0f;
+            groundedTimer = 0f;
+            velocity.y = Mathf.Sqrt(2f * jumpHeight * -gravity);
+            OnJump?.Invoke(); // <— fire event
+        }
 
-        cc.Move(velocity * Time.deltaTime);
+    }
+    public void Die()
+    {
+        OnDeath?.Invoke();
+        // disable input/move here if you want
+        enabled = false;
     }
 }
